@@ -27,7 +27,7 @@ pub struct Nodes
 }
 
 fn empty_string_as_empty_vec<'de, Deserializer, Value>(deserializer: Deserializer)
-	-> Result<Vec<Value	>, Deserializer::Error>
+	-> Result<Vec<Value>, Deserializer::Error>
 where
 	Deserializer: serde::Deserializer<'de>,
 	Value: serde::Deserialize<'de>,

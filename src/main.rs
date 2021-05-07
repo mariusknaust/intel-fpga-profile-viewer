@@ -297,15 +297,12 @@ where
 						}
 					}
 				}
-				else
+				else if let Some((_, samples)) = unrolls.iter().next()
 				{
-					unrolls.iter().next()
-						.map(|(_, samples)|
-							for line in compute(&samples).lines()
-							{
-								println!("\t\t\t{}", line);
-							})
-						.unwrap();
+					for line in compute(&samples).lines()
+					{
+						println!("\t\t\t{}", line);
+					}
 				}
 			}
 		}
