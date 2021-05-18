@@ -36,8 +36,7 @@ fn main() -> anyhow::Result<()>
 	print_boards(&profile);
 
 	print_run_information(&profile);
-	print_global_bandwidth(&profile, &options);
-	print_burst(&profile, &options);
+	print_external_memory(&profile, &options);
 
 	print_global_memory_module_instances(&profile, &options);
 	print_local_memory_module_instances(&profile, &options);
@@ -104,7 +103,7 @@ fn print_run_information(profile: &Profile)
 	}
 }
 
-fn print_global_bandwidth(profile: &Profile, options: &Options)
+fn print_external_memory(profile: &Profile, options: &Options)
 {
 	let structured_bandwidths = profile.kernels.nodes.iter()
 		.filter_map(|node|
@@ -129,98 +128,56 @@ fn print_global_bandwidth(profile: &Profile, options: &Options)
 					.chain(kernel.sample_timestamps.iter())
 					.zip(kernel.sample_timestamps.iter());
 
-				let bandwidth = intervals.zip(external_memory.global_used_bandwidth.iter())
-					.map(|((start_time, end_time), bandwidth)|
+				let samples = external_memory.global_used_bandwidth.iter()
+					.zip(external_memory.average_write_burst.iter())
+					.zip(external_memory.average_read_burst.iter());
+
+				let (bandwidth, write_burst, read_burst) = intervals.zip(samples)
+					.fold((0., 0., 0.),
+						|(bandwidth_sum, write_burst_sum, read_burst_sum),
+							((start_time, end_time), ((bandwidth, write_burst), read_burst))|
 						{
-							(end_time - start_time) as f32 * bandwidth
-						})
-					.sum::<f32>();
+							let time = (end_time - start_time) as f32;
+
+							(bandwidth_sum + time * bandwidth,
+								write_burst_sum + time * write_burst,
+								read_burst_sum + time * read_burst)
+						});
 
 				let time = kernel.end_time - kernel.start_time;
 
-				((&external_memory.name, &external_memory.port), time, bandwidth)
+				((&external_memory.name, &external_memory.port), time, bandwidth,
+					write_burst, read_burst)
 			})
-		.fold(std::collections::BTreeMap::new(), |mut map, ((name, port), time, bandwidth)|
+		.fold(std::collections::BTreeMap::new(),
+			|mut map, ((name, port), time, bandwidth, write_burst, read_burst)|
 			{
-				let (ref mut time_sum, ref mut bandwidth_sum) =
-					map.entry(name).or_insert_with(std::collections::BTreeMap::new)
-						.entry(port).or_insert((0, 0.));
+				let (ref mut time_sum,
+					(ref mut bandwidth_sum, ref mut write_burst_sum, ref mut read_burst_sum)) =
+						map.entry(name).or_insert_with(std::collections::BTreeMap::new)
+							.entry(port).or_insert((0, (0., 0., 0.)));
 
 				*time_sum += time;
 				*bandwidth_sum += bandwidth;
-
-				map
-			});
-
-	println!("Global bandwidth:");
-
-	for (name, ports) in structured_bandwidths.into_iter()
-	{
-		println!("\tMemory {}:", name);
-
-		for (port, (time_sum, bandwidth_sum)) in ports.into_iter()
-		{
-			println!("\t\tPort {}: {:.2} MB/s", port, bandwidth_sum / time_sum as f32);
-		}
-	}
-}
-
-fn print_burst(profile: &Profile, options: &Options)
-{
-	let structured_bursts = profile.kernels.nodes.iter()
-		.filter_map(|node|
-			match node
-			{
-				Node::Kernel(kernel) => Some(kernel),
-				_ => None
-			})
-		.filter(|kernel|
-			options.kernels.as_ref().map(|kernels| kernels.contains(&kernel.name)).unwrap_or(true))
-		.flat_map(|kernel|
-			kernel.children.iter()
-				.filter_map(|child|
-					match child
-					{
-						Child::ExternalMemory(external_memory) => Some(external_memory),
-						_ => None
-					})
-				.map(|external_memory|
-					{
-						let average_write_burst =
-							external_memory.average_write_burst.iter().sum::<f32>()
-							/ external_memory.average_write_burst.len() as f32;
-						let average_read_burst =
-							external_memory.average_read_burst.iter().sum::<f32>()
-							/ external_memory.average_read_burst.len() as f32;
-
-						((&external_memory.name, &external_memory.port),
-							(average_write_burst, average_read_burst))
-					}))
-		.fold(std::collections::BTreeMap::new(),
-			|mut map, ((name, port), (write_burst, read_burst))|
-			{
-				let (ref mut number_of_samples, ref mut write_burst_sum, ref mut read_burst_sum) =
-					map.entry(name).or_insert_with(std::collections::BTreeMap::new)
-						.entry(port).or_insert((0, 0., 0.));
-
-				*number_of_samples += 1;
 				*write_burst_sum += write_burst;
 				*read_burst_sum += read_burst;
 
 				map
 			});
 
-	println!("Burst:");
+	println!("External memory:");
 
-	for (name, ports) in structured_bursts.into_iter()
+	for (name, ports) in structured_bandwidths.into_iter()
 	{
 		println!("\tMemory {}:", name);
 
-		for (port, (number_of_samples, write_burst_sum, read_burst_sum)) in ports.into_iter()
+		for (port, (time_sum, (bandwidth_sum, write_burst_sum, read_burst_sum)))
+			in ports.into_iter()
 		{
 			println!("\t\tPort {}:", port);
-			println!("\t\t\tWrite: {:.2}", write_burst_sum / number_of_samples as f32);
-			println!("\t\t\tRead: {:.2}", read_burst_sum / number_of_samples as f32);
+			println!("\t\t\tBandwidth: {:.2} MB/s", bandwidth_sum / time_sum as f32);
+			println!("\t\t\tWrite burst: {:.2}", write_burst_sum / time_sum as f32);
+			println!("\t\t\tRead burst: {:.2}", read_burst_sum / time_sum as f32);
 		}
 	}
 }
