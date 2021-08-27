@@ -404,7 +404,7 @@ where
 	let (occupancy_sum, cycles_sum) = samples
 		.flat_map(|(kernel, sample)|
 			sample.occupancy_samples().iter()
-				.zip(kernel.total_cycles_between_samples.iter()))
+				.zip(kernel.total_cycles_between_samples.iter().flatten()))
 		.fold((0u64, 0u64), |(occupancy_sum, cycles_sum), (&occupancy, &cycles)|
 			(occupancy_sum + occupancy, cycles_sum + cycles));
 
@@ -421,7 +421,7 @@ where
 			sample.stall_samples().iter()
 				.zip(sample.idle_samples().iter())
 				.zip(sample.activity_samples().iter())
-				.zip(kernel.total_cycles_between_samples.iter()))
+				.zip(kernel.total_cycles_between_samples.iter().flatten()))
 		.fold((0u64, 0u64, 0u64, 0u64),
 			|(stall_sum, idle_sum, activity_sum, cycles_sum),
 				(((&stall, &idle), &activity), &cycles)|

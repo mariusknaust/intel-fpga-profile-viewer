@@ -94,10 +94,12 @@ pub struct Kernel
 	pub shared_counter_run_type: i32,
 	#[serde_as(as = "Vec<serde_with::DisplayFromStr>")]
 	pub sample_timestamps: Vec<u64>,
-	#[serde_as(as = "Vec<serde_with::DisplayFromStr>")]
-	pub total_cycles_between_samples: Vec<u64>,
+	#[serde(default)]
+	#[serde_as(as = "Option<Vec<serde_with::DisplayFromStr>>")]
+	pub total_cycles_between_samples: Option<Vec<u64>>,
 	#[serde_as(as = "serde_with::DisplayFromStr")]
 	pub is_autorun: bool,
+	#[serde(deserialize_with = "empty_string_as_empty_vec")]
 	pub children: Vec<Child>,
 }
 
