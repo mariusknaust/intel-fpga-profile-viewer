@@ -486,7 +486,7 @@ where
 fn compute_effectiveness<'a, Samples, Sample>(samples: Samples) -> String
 where
 	Samples: Iterator<Item = &'a (&'a Kernel, &'a Sample)> + Clone,
-	Sample: Effectiveness + 'a,
+	Sample: Effectiveness + Occupancy + 'a,
 {
 	let (number_of_samples, bandwidth_effective_sum, average_burst_size_sum) = samples.clone()
 		.flat_map(|(_, sample)|
@@ -499,18 +499,23 @@ where
 						bandwidth_effective_sum + bandwidth_effective,
 						average_burst_size_sum + average_burst_size));
 
-	let (number_of_cache_hit_samples, cache_hit_sum) = samples
-		.flat_map(|(_, sample)| sample.cache_hit_samples().iter())
-		.fold((0, 0.), |(number_of_samples, cache_hit_sum), cache_hit|
-			(number_of_samples + 1, cache_hit_sum + cache_hit));
+	let (cache_hit_samples_present, cache_hit_sum, occupancy_sum) = samples
+		.flat_map(|(_, sample)|
+			sample.cache_hit_samples().iter()
+				.zip(sample.occupancy_samples().iter()))
+		.fold((false, 0u64, 0u64),
+			|(cache_hit_samples_present, cache_hit_sum, occupancy_sum), (&cache_hit, &occupancy)|
+				(cache_hit_samples_present || true,
+					cache_hit_sum + cache_hit, occupancy_sum + occupancy));
 
 	let output = format!("Efficiency: {:.2} %\nBurst size: {:.2}",
 		bandwidth_effective_sum / number_of_samples as f32 * 100.,
 		average_burst_size_sum / number_of_samples as f32);
 
-	if number_of_cache_hit_samples > 0
+	if cache_hit_samples_present
 	{
-		format!("{}\nCache hit: {:.2}", output, cache_hit_sum / number_of_cache_hit_samples as f32)
+		format!("{}\nCache hit: {:.2} %", output,
+			cache_hit_sum as f32 / occupancy_sum as f32 * 100.)
 	}
 	else
 	{

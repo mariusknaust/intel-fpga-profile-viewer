@@ -97,7 +97,7 @@ macro_rules! impl_bandwidth
 pub trait Effectiveness
 {
 	fn bandwidth_effective_samples(&self) -> &[f32];
-	fn cache_hit_samples(&self) -> &[f32];
+	fn cache_hit_samples(&self) -> &[u64];
 	fn average_burst_size(&self) -> &[f32];
 }
 
@@ -112,7 +112,7 @@ macro_rules! impl_effectivness
 				&self.bandwidth_effective_samples
 			}
 
-			fn cache_hit_samples(&self) -> &[f32]
+			fn cache_hit_samples(&self) -> &[u64]
 			{
 				&self.cache_hit_samples
 			}

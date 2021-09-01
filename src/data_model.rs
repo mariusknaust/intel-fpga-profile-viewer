@@ -236,7 +236,7 @@ pub struct Global
 	pub bandwidth_effective_samples: Vec<f32>,
 	#[serde(default)]
 	#[serde_as(as = "Vec<serde_with::DisplayFromStr>")]
-	pub cache_hit_samples: Vec<f32>,
+	pub cache_hit_samples: Vec<u64>,
 	#[serde_as(as = "serde_with::DisplayFromStr")]
 	pub coalesced_memory: bool,
 	#[serde(rename = "global_mem_name")]
