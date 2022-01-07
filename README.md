@@ -14,4 +14,4 @@ cargo build --release
 ```
 
 ## Options
-It is possible to expand the module instance section with `--expand` or select the kernels to be considered by supplying there names to `--kernels`.
+It is possible to expand the module instance section with `--expand` or select the kernels to be considered by supplying their names to `--kernels`.
